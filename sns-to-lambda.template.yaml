@@ -1,0 +1,47 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Example stack for calling Lambda via SNS
+
+Resources:
+  MySnsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      Subscription:
+      - Endpoint: !GetAtt MyConsoleLoggingFunction.Arn
+        Protocol: lambda
+
+  MyLambdaExecutionPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      Principal: sns.amazonaws.com
+      FunctionName: !GetAtt MyConsoleLoggingFunction.Arn
+      SourceArn: !Ref MySnsTopic
+
+  MyConsoleLoggingFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        ZipFile: >
+          exports.lambdaHandler = async (event, context) => {
+            console.log(JSON.stringify(event))
+            return event
+          }
+      Handler: index.lambdaHandler
+      Role: !GetAtt MyConsoleLoggingFunctionRole.Arn
+      Timeout: 3
+      Runtime: nodejs8.10
+
+  MyConsoleLoggingFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
